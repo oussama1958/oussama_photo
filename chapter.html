@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>قراءة الفصل</title>
+
+<style>
+
+body{
+background:#0f0f0f;
+color:white;
+font-family:Arial;
+margin:0;
+padding:15px;
+line-height:2.1;
+box-sizing:border-box;
+}
+
+*{
+box-sizing:border-box;
+}
+
+/* زر الرجوع */
+
+.top-bar{
+margin-bottom:20px;
+}
+
+.back-btn{
+background:red;
+color:white;
+border:none;
+padding:10px 18px;
+border-radius:10px;
+font-size:15px;
+cursor:pointer;
+transition:0.3s;
+}
+
+.back-btn:hover{
+opacity:0.8;
+}
+
+h1{
+text-align:center;
+margin-bottom:20px;
+font-size:30px;
+line-height:1.5;
+word-break:break-word;
+}
+
+#content{
+background:#1b1b1b;
+padding:22px;
+border-radius:18px;
+font-size:21px;
+line-height:2.3;
+word-break:break-word;
+overflow-wrap:break-word;
+box-shadow:0 0 10px rgba(0,0,0,0.4);
+}
+
+/* الفقرات */
+
+#content p{
+margin-bottom:22px;
+}
+
+/* الهاتف */
+
+@media(max-width:768px){
+
+body{
+padding:10px;
+}
+
+.back-btn{
+font-size:14px;
+padding:9px 14px;
+}
+
+h1{
+font-size:24px;
+margin-bottom:15px;
+line-height:1.4;
+}
+
+#content{
+padding:18px;
+font-size:18px;
+line-height:2.2;
+border-radius:15px;
+}
+
+}
+
+/* الهواتف الصغيرة */
+
+@media(max-width:480px){
+
+body{
+padding:8px;
+}
+
+h1{
+font-size:21px;
+}
+
+#content{
+font-size:17px;
+padding:15px;
+line-height:2.1;
+border-radius:13px;
+}
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="top-bar">
+
+<button class="back-btn"
+onclick="history.back()">
+
+رجوع
+
+</button>
+
+</div>
+
+<h1 id="chapterTitle"></h1>
+
+<div id="content"></div>
+
+<script type="module">
+
+import { initializeApp }
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+
+import {
+getFirestore,
+doc,
+getDoc
+}
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC20dxXLArorRAndMyIF1iBc6R4OVCYZIo",
+  authDomain: "oussa-3e001.firebaseapp.com",
+  projectId: "oussa-3e001",
+  storageBucket: "oussa-3e001.firebasestorage.app",
+  messagingSenderId: "963147796988",
+  appId: "1:963147796988:web:d06cc7c211f7d20c27a279"
+};
+
+const app = initializeApp(firebaseConfig);
+
+const db = getFirestore(app);
+
+const params =
+new URLSearchParams(window.location.search);
+
+const id = params.get("id");
+
+async function loadChapter(){
+
+const docRef =
+doc(db,"chapters",id);
+
+const docSnap =
+await getDoc(docRef);
+
+if(docSnap.exists()){
+
+const chapter =
+docSnap.data();
+
+document.getElementById("chapterTitle")
+.innerText = chapter.title;
+
+document.getElementById("content")
+.innerHTML = chapter.content;
+
+}
+
+}
+
+loadChapter();
+
+</script>
+
+</body>
+</html>

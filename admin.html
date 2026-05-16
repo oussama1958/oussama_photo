@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>ADMIN</title>
+
+<style>
+
+body{
+background:#111;
+color:white;
+font-family:Arial;
+padding:20px;
+margin:0;
+}
+
+h1{
+text-align:center;
+margin-bottom:30px;
+}
+
+.box{
+max-width:450px;
+margin:auto;
+display:flex;
+flex-direction:column;
+gap:15px;
+background:#1b1b1b;
+padding:20px;
+border-radius:15px;
+}
+
+input,
+textarea,
+select{
+padding:12px;
+border:none;
+border-radius:10px;
+background:#222;
+color:white;
+font-size:16px;
+outline:none;
+}
+
+textarea{
+height:200px;
+resize:none;
+}
+
+button{
+padding:14px;
+border:none;
+border-radius:10px;
+background:red;
+color:white;
+font-size:17px;
+cursor:pointer;
+transition:0.3s;
+}
+
+button:hover{
+opacity:0.8;
+}
+
+hr{
+width:100%;
+border:1px solid #333;
+}
+
+h2{
+text-align:center;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h1>لوحة الإدارة</h1>
+
+<div class="box">
+
+<h2>إضافة رواية</h2>
+
+<input
+type="text"
+id="novelTitle"
+placeholder="اسم الرواية">
+
+<input
+type="text"
+id="novelCover"
+placeholder="رابط صورة الغلاف">
+
+<button id="addNovel">
+إضافة الرواية
+</button>
+
+<hr>
+
+<h2>إضافة فصل</h2>
+
+<select id="novelSelect">
+
+<option>
+جاري تحميل الروايات...
+</option>
+
+</select>
+
+<input
+type="text"
+id="chapterTitle"
+placeholder="عنوان الفصل">
+
+<textarea
+id="chapterContent"
+placeholder="محتوى الفصل">
+</textarea>
+
+<button id="addChapter">
+إضافة الفصل
+</button>
+
+</div>
+
+<script type="module">
+
+import { initializeApp }
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+
+import {
+getFirestore,
+collection,
+addDoc,
+getDocs
+}
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC20dxXLArorRAndMyIF1iBc6R4OVCYZIo",
+  authDomain: "oussa-3e001.firebaseapp.com",
+  projectId: "oussa-3e001",
+  storageBucket: "oussa-3e001.firebasestorage.app",
+  messagingSenderId: "963147796988",
+  appId: "1:963147796988:web:d06cc7c211f7d20c27a279"
+};
+
+const app = initializeApp(firebaseConfig);
+
+const db = getFirestore(app);
+
+const novelSelect =
+document.getElementById("novelSelect");
+
+async function loadNovels(){
+
+novelSelect.innerHTML = "";
+
+const querySnapshot =
+await getDocs(collection(db,"novels"));
+
+querySnapshot.forEach((doc)=>{
+
+const novel = doc.data();
+
+novelSelect.innerHTML += `
+
+<option value="${doc.id}">
+${novel.title}
+</option>
+
+`;
+
+});
+
+}
+
+loadNovels();
+
+document.getElementById("addNovel")
+.addEventListener("click",async()=>{
+
+const title =
+document.getElementById("novelTitle").value;
+
+const cover =
+document.getElementById("novelCover").value;
+
+if(title == "" || cover == ""){
+
+alert("املأ جميع الحقول");
+
+return;
+
+}
+
+await addDoc(collection(db,"novels"),{
+
+title:title,
+cover:cover
+
+});
+
+alert("تمت إضافة الرواية");
+
+document.getElementById("novelTitle").value = "";
+document.getElementById("novelCover").value = "";
+
+loadNovels();
+
+});
+
+document.getElementById("addChapter")
+.addEventListener("click",async()=>{
+
+const novelId =
+novelSelect.value;
+
+const chapterTitle =
+document.getElementById("chapterTitle").value;
+
+const chapterContent =
+document.getElementById("chapterContent").value;
+
+if(chapterTitle == "" || chapterContent == ""){
+
+alert("املأ جميع الحقول");
+
+return;
+
+}
+
+await addDoc(collection(db,"chapters"),{
+
+novelId:novelId,
+title:chapterTitle,
+content:chapterContent
+
+});
+
+alert("تمت إضافة الفصل");
+
+document.getElementById("chapterTitle").value = "";
+document.getElementById("chapterContent").value = "";
+
+});
+
+</script>
+
+</body>
+</html>

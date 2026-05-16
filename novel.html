@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>الرواية</title>
+
+<style>
+
+body{
+margin:0;
+padding:15px;
+background:#0f0f0f;
+font-family:Arial;
+color:white;
+box-sizing:border-box;
+}
+
+*{
+box-sizing:border-box;
+}
+
+.top-bar{
+margin-bottom:20px;
+}
+
+.back-btn{
+background:red;
+color:white;
+padding:10px 16px;
+border:none;
+border-radius:10px;
+cursor:pointer;
+font-size:15px;
+}
+
+.back-btn:hover{
+opacity:0.8;
+}
+
+.novel-info{
+display:flex;
+gap:20px;
+align-items:flex-start;
+background:#1b1b1b;
+padding:15px;
+border-radius:15px;
+margin-bottom:25px;
+}
+
+.novel-cover{
+width:170px;
+height:250px;
+object-fit:cover;
+border-radius:12px;
+flex-shrink:0;
+}
+
+.novel-details{
+flex:1;
+display:flex;
+align-items:center;
+height:250px;
+}
+
+.novel-title{
+font-size:30px;
+margin:0;
+word-break:break-word;
+}
+
+.chapter-title{
+font-size:24px;
+margin-bottom:15px;
+}
+
+.chapter{
+background:#1c1c1c;
+padding:14px;
+margin-bottom:12px;
+border-radius:12px;
+cursor:pointer;
+transition:0.3s;
+font-size:17px;
+word-break:break-word;
+}
+
+.chapter:hover{
+background:#2a2a2a;
+transform:scale(1.01);
+}
+
+/* الهاتف */
+
+@media(max-width:768px){
+
+body{
+padding:10px;
+}
+
+.novel-info{
+flex-direction:row;
+gap:12px;
+padding:12px;
+align-items:flex-start;
+}
+
+.novel-cover{
+width:110px;
+height:160px;
+border-radius:10px;
+}
+
+.novel-details{
+height:auto;
+align-items:flex-start;
+padding-top:5px;
+}
+
+.novel-title{
+font-size:22px;
+line-height:1.4;
+}
+
+.chapter-title{
+font-size:22px;
+}
+
+.chapter{
+font-size:16px;
+padding:13px;
+}
+
+.back-btn{
+font-size:14px;
+padding:9px 14px;
+}
+
+}
+
+/* الهواتف الصغيرة جدا */
+
+@media(max-width:480px){
+
+.novel-cover{
+width:95px;
+height:140px;
+}
+
+.novel-title{
+font-size:19px;
+}
+
+.chapter{
+font-size:15px;
+padding:12px;
+}
+
+.chapter-title{
+font-size:20px;
+}
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="top-bar">
+
+<button class="back-btn"
+onclick="location.href='index.html'">
+
+رجوع
+
+</button>
+
+</div>
+
+<div class="novel-info">
+
+<img
+id="novelCover"
+class="novel-cover"
+src="">
+
+<div class="novel-details">
+
+<h1
+id="novelTitle"
+class="novel-title">
+جاري التحميل...
+</h1>
+
+</div>
+
+</div>
+
+<h2 class="chapter-title">
+الفصول
+</h2>
+
+<div id="chapters"></div>
+
+<script type="module">
+
+import { initializeApp }
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+
+import {
+getFirestore,
+doc,
+getDoc,
+collection,
+query,
+where,
+getDocs
+}
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC20dxXLArorRAndMyIF1iBc6R4OVCYZIo",
+  authDomain: "oussa-3e001.firebaseapp.com",
+  projectId: "oussa-3e001",
+  storageBucket: "oussa-3e001.firebasestorage.app",
+  messagingSenderId: "963147796988",
+  appId: "1:963147796988:web:d06cc7c211f7d20c27a279"
+};
+
+const app = initializeApp(firebaseConfig);
+
+const db = getFirestore(app);
+
+const params =
+new URLSearchParams(window.location.search);
+
+const novelId = params.get("id");
+
+const chaptersDiv =
+document.getElementById("chapters");
+
+async function loadNovel(){
+
+const docRef =
+doc(db,"novels",novelId);
+
+const docSnap =
+await getDoc(docRef);
+
+if(docSnap.exists()){
+
+const novel =
+docSnap.data();
+
+document.getElementById("novelTitle")
+.innerText = novel.title;
+
+document.getElementById("novelCover")
+.src = novel.cover;
+
+}
+
+}
+
+async function loadChapters(){
+
+const q = query(
+collection(db,"chapters"),
+where("novelId","==",novelId)
+);
+
+const querySnapshot =
+await getDocs(q);
+
+querySnapshot.forEach((doc)=>{
+
+const chapter = doc.data();
+
+chaptersDiv.innerHTML += `
+
+<div class="chapter"
+onclick="location.href='chapter.html?id=${doc.id}'">
+
+${chapter.title}
+
+</div>
+
+`;
+
+});
+
+}
+
+loadNovel();
+
+loadChapters();
+
+</script>
+
+</body>
+</html>
