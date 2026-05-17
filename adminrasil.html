@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>لوحة كتابة الفصول - راسيل</title>
+<title>لوحة كتابة وتعديل الفصول - رصيل</title>
 <style>
 body {
     background: #111;
@@ -81,7 +81,13 @@ textarea {
     line-height: 1.6;
 }
 
+.btn-group {
+    display: flex;
+    gap: 10px;
+}
+
 button {
+    flex: 1;
     padding: 14px;
     border: none;
     border-radius: 10px;
@@ -97,10 +103,22 @@ button:hover {
     background: #ff6b81;
 }
 
+button.secondary-btn {
+    background: #444;
+}
+
+button.secondary-btn:hover {
+    background: #555;
+}
+
 .note {
     font-size: 13px;
     color: #888;
     text-align: center;
+}
+
+.hidden {
+    display: none;
 }
 </style>
 </head>
@@ -114,11 +132,17 @@ button:hover {
 <h1>لوحة إدارة المحتوى (رصيل)</h1>
 
 <div class="box">
-    <h2>إضافة فصل جديد</h2>
+    <h2 id="formTitle">إضافة فصل جديد</h2>
 
     <label for="novelSelect">اختر الرواية المستهدفة:</label>
     <select id="novelSelect">
         <option value="">جاري تحميل الروايات المتاحة لك...</option>
+    </select>
+
+    <!-- قسم اختيار الفصل للتعديل (يظهر فقط عند اختيار رواية) -->
+    <label for="chapterSelect">اختر الفصل للتعديل (أو اتركه لإنشاء فصل جديد):</label>
+    <select id="chapterSelect" disabled>
+        <option value="">-- اختر الرواية أولاً --</option>
     </select>
 
     <label for="chapterTitle">عنوان الفصل:</label>
@@ -127,15 +151,18 @@ button:hover {
     <label for="chapterContent">محتوى الفصل:</label>
     <textarea id="chapterContent" placeholder="اكتب محتوى الفصل هنا... (يدعم الفراغات والأسطر الجديدة تلقائياً)"></textarea>
 
-    <button id="addChapter">نشر الفصل الآن</button>
+    <div class="btn-group">
+        <button id="submitBtn">نشر الفصل الآن</button>
+        <button id="cancelBtn" class="secondary-btn hidden">إلغاء التعديل</button>
+    </div>
     
-    <p class="note">ملاحظة: تظهر لك فقط الروايات المصرح لك بالكتابة فيها من قبل الإدارة.</p>
+    <p class="note">ملاحظة: تظهر لك فقط الروايات المصرح لك بالكتابة فيها من قبل الإدارة، ويمكنك تعديل الفصول المنشورة مسبقاً عبر اختيارها من القائمة.</p>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { 
-    getFirestore, collection, addDoc, getDocs, query, where 
+    getFirestore, collection, addDoc, getDocs, doc, getDoc, updateDoc, query, where 
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -151,12 +178,22 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 const novelSelect = document.getElementById("novelSelect");
+const chapterSelect = document.getElementById("chapterSelect");
+const formTitle = document.getElementById("formTitle");
+const submitBtn = document.getElementById("submitBtn");
+const cancelBtn = document.getElementById("cancelBtn");
+const chapterTitleInput = document.getElementById("chapterTitle");
+const chapterContentInput = document.getElementById("chapterContent");
 
-// جلب الروايات التي تحتوي على صلاحية رصيل فقط بشكل مباشر وضامن
+// متغير لحفظ البيانات المحلية للفصول لتجنب كثرة الاستدعاءات
+let localChapters = {}; 
+let editMode = false;
+let currentEditChapterId = null;
+
+// جلب الروايات التي تحتوي على صلاحية رصيل فقط
 async function loadAllowedNovelsDirectly() {
     novelSelect.innerHTML = '<option value="">-- اختر الرواية --</option>';
     
-    // استعلام ذكي يجلب فقط الروايات المصرح لها
     const q = query(collection(db, "novels"), where("rasilAllowed", "==", true));
     const querySnapshot = await getDocs(q);
     
@@ -175,13 +212,87 @@ async function loadAllowedNovelsDirectly() {
     }
 }
 
-loadAllowedNovelsDirectly();
+// جلب الفصول الخاصة بالرواية المحددة
+async function loadNovelChapters(novelId) {
+    if (!novelId) {
+        chapterSelect.innerHTML = '<option value="">-- اختر الرواية أولاً --</option>';
+        chapterSelect.disabled = true;
+        resetForm();
+        return;
+    }
 
-// إضافة الفصل
-document.getElementById("addChapter").addEventListener("click", async () => {
+    chapterSelect.innerHTML = '<option value="">جاري تحميل الفصول...</option>';
+    chapterSelect.disabled = true;
+
+    const q = query(collection(db, "chapters"), where("novelId", "==", novelId));
+    const querySnapshot = await getDocs(q);
+    
+    chapterSelect.innerHTML = '<option value="">-- إنشاء فصل جديد (جديد) --</option>';
+    localChapters = {}; // تصغير الكاش المحلي
+
+    querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        localChapters[doc.id] = data; // تخزين البيانات محلياً للسرعة
+        chapterSelect.innerHTML += `
+            <option value="${doc.id}">${data.title}</option>
+        `;
+    });
+
+    chapterSelect.disabled = false;
+}
+
+// مراقبة تغيير الرواية المستهدفة
+novelSelect.addEventListener("change", (e) => {
+    loadNovelChapters(e.target.value);
+});
+
+// مراقبة اختيار الفصل للتعديل
+chapterSelect.addEventListener("change", (e) => {
+    const chapterId = e.target.value;
+    
+    if (chapterId === "") {
+        // العودة لوضع الإضافة
+        resetForm();
+    } else {
+        // الانتقال لوضع التعديل وتعبئة البيانات
+        const chapterData = localChapters[chapterId];
+        if (chapterData) {
+            editMode = true;
+            currentEditChapterId = chapterId;
+            formTitle.textContent = "تعديل الفصل المنشور";
+            formTitle.style.color = "#ffa502"; // تغيير اللون لتمييز وضع التعديل
+            submitBtn.textContent = "حفظ التعديلات الآن";
+            submitBtn.style.background = "#ffa502";
+            cancelBtn.classList.remove("hidden");
+            
+            chapterTitleInput.value = chapterData.title;
+            chapterContentInput.value = chapterData.content;
+        }
+    }
+});
+
+// إلغاء وضع التعديل وتصفير الاستمارة
+function resetForm() {
+    editMode = false;
+    currentEditChapterId = null;
+    formTitle.textContent = "إضافة فصل جديد";
+    formTitle.style.color = "#ff4757";
+    submitBtn.textContent = "نشر الفصل الآن";
+    submitBtn.style.background = "#ff4757";
+    cancelBtn.classList.add("hidden");
+    
+    chapterTitleInput.value = "";
+    chapterContentInput.value = "";
+    chapterSelect.value = "";
+}
+
+cancelBtn.addEventListener("click", resetForm);
+
+// الضغط على زر النشر أو التحديث
+submitBtn.addEventListener("click", async () => {
     const novelId = novelSelect.value;
-    const chapterTitle = document.getElementById("chapterTitle").value.trim();
-    const chapterContent = document.getElementById("chapterContent").value;
+    const chapterTitle = chapterTitleInput.value.trim();
+    const chapterContent = chapterContentInput.value;
 
     if (novelId === "") {
         alert("يرجى اختيار الرواية أولاً");
@@ -194,20 +305,44 @@ document.getElementById("addChapter").addEventListener("click", async () => {
     }
 
     try {
-        await addDoc(collection(db, "chapters"), {
-            novelId: novelId,
-            title: chapterTitle,
-            content: chapterContent
-        });
+        if (editMode && currentEditChapterId) {
+            // عمل تحديث للفصل الحالي Update
+            const chapterRef = doc(db, "chapters", currentEditChapterId);
+            await updateDoc(chapterRef, {
+                title: chapterTitle,
+                content: chapterContent
+            });
+            
+            alert("تم تحديث الفصل بنجاح!");
+            // تحديث الكاش المحلي والقائمة دون الحاجة لإعادة التحميل من السيرفر
+            localChapters[currentEditChapterId].title = chapterTitle;
+            localChapters[currentEditChapterId].content = chapterContent;
+            
+            // تحديث اسم الفصل في القائمة المنسدلة
+            const option = chapterSelect.querySelector(`option[value="${currentEditChapterId}"]`);
+            if (option) option.textContent = chapterTitle;
+            
+            resetForm();
+        } else {
+            // إضافة فصل جديد Add
+            await addDoc(collection(db, "chapters"), {
+                novelId: novelId,
+                title: chapterTitle,
+                content: chapterContent
+            });
 
-        alert("تمت إضافة الفصل بنجاح بنسق الفراغات الصحيح!");
-        document.getElementById("chapterTitle").value = "";
-        document.getElementById("chapterContent").value = "";
+            alert("تمت إضافة الفصل بنجاح بنسق الفراغات الصحيح!");
+            resetForm();
+            loadNovelChapters(novelId); // إعادة جلب الفصول لتظهر بالمنسدلة الجديدة
+        }
     } catch (error) {
-        console.error("Error adding chapter: ", error);
-        alert("حدث خطأ أثناء إضافة الفصل");
+        console.error("حدث خطأ في العملية: ", error);
+        alert("حدث خطأ أثناء حفظ البيانات");
     }
 });
+
+// بدء التحميل عند فتح الصفحة
+loadAllowedNovelsDirectly();
 </script>
 
 </body>
