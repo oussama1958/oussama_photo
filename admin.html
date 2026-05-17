@@ -12,9 +12,10 @@
 body{
 background:#111;
 color:white;
-font-family:Arial;
+font-family:Arial, sans-serif;
 padding:20px;
 margin:0;
+direction: rtl; /* توجيه الصفحة من اليمين لليسار ليناسب اللغة العربية */
 }
 
 h1{
@@ -22,15 +23,17 @@ text-align:center;
 margin-bottom:30px;
 }
 
+/* تكبير الصندوق الرئيسي ليتحمل المحتوى الواسع */
 .box{
-max-width:450px;
+max-width: 700px; /* تم تكبير العرض من 450px إلى 700px */
 margin:auto;
 display:flex;
 flex-direction:column;
 gap:15px;
 background:#1b1b1b;
-padding:20px;
+padding:25px;
 border-radius:15px;
+box-shadow: 0 4px 15px rgba(0,0,0,0.5);
 }
 
 input,
@@ -43,11 +46,15 @@ background:#222;
 color:white;
 font-size:16px;
 outline:none;
+font-family: inherit;
 }
 
+/* تعديل حجم صندوق المحتوى ليصبح واسعاً ومناسباً للروايات */
 textarea{
-height:200px;
-resize:none;
+height: 350px; /* زيادة الارتفاع لراحة أكبر أثناء الكتابة */
+resize: vertical; /* السماح للمشرف بتكبير الصندوق عمودياً حسب الحاجة */
+white-space: pre-wrap; /* يضمن إظهار الفراغات والأسطر داخل الصندوق أثناء الكتابة */
+line-height: 1.6; /* تحسين المسافة بين السطور */
 }
 
 button{
@@ -59,6 +66,7 @@ color:white;
 font-size:17px;
 cursor:pointer;
 transition:0.3s;
+font-weight: bold;
 }
 
 button:hover{
@@ -67,11 +75,13 @@ opacity:0.8;
 
 hr{
 width:100%;
-border:1px solid #333;
+border: 1px solid #2a2a2a;
+margin: 20px 0;
 }
 
 h2{
 text-align:center;
+color: #e0e0e0;
 }
 
 </style>
@@ -117,10 +127,10 @@ type="text"
 id="chapterTitle"
 placeholder="عنوان الفصل">
 
+<!-- الصندوق هنا أصبح واسعاً ويدعم السطور بشكل ممتاز -->
 <textarea
 id="chapterContent"
-placeholder="محتوى الفصل">
-</textarea>
+placeholder="اكتب محتوى الفصل هنا... استخدم Enter للسطور الجديدة والفراغات كما تحب"></textarea>
 
 <button id="addChapter">
 إضافة الفصل
@@ -151,103 +161,64 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-
 const db = getFirestore(app);
 
-const novelSelect =
-document.getElementById("novelSelect");
+const novelSelect = document.getElementById("novelSelect");
 
 async function loadNovels(){
-
-novelSelect.innerHTML = "";
-
-const querySnapshot =
-await getDocs(collection(db,"novels"));
-
-querySnapshot.forEach((doc)=>{
-
-const novel = doc.data();
-
-novelSelect.innerHTML += `
-
-<option value="${doc.id}">
-${novel.title}
-</option>
-
-`;
-
-});
-
+    novelSelect.innerHTML = "";
+    const querySnapshot = await getDocs(collection(db,"novels"));
+    querySnapshot.forEach((doc)=>{
+        const novel = doc.data();
+        novelSelect.innerHTML += `
+        <option value="${doc.id}">
+        ${novel.title}
+        </option>
+        `;
+    });
 }
 
 loadNovels();
 
-document.getElementById("addNovel")
-.addEventListener("click",async()=>{
+document.getElementById("addNovel").addEventListener("click",async()=>{
+    const title = document.getElementById("novelTitle").value;
+    const cover = document.getElementById("novelCover").value;
 
-const title =
-document.getElementById("novelTitle").value;
+    if(title == "" || cover == ""){
+        alert("املأ جميع الحقول");
+        return;
+    }
 
-const cover =
-document.getElementById("novelCover").value;
+    await addDoc(collection(db,"novels"),{
+        title:title,
+        cover:cover
+    });
 
-if(title == "" || cover == ""){
-
-alert("املأ جميع الحقول");
-
-return;
-
-}
-
-await addDoc(collection(db,"novels"),{
-
-title:title,
-cover:cover
-
+    alert("تمت إضافة الرواية");
+    document.getElementById("novelTitle").value = "";
+    document.getElementById("novelCover").value = "";
+    loadNovels();
 });
 
-alert("تمت إضافة الرواية");
+document.getElementById("addChapter").addEventListener("click",async()=>{
+    const novelId = novelSelect.value;
+    const chapterTitle = document.getElementById("chapterTitle").value;
+    const chapterContent = document.getElementById("chapterContent").value; // هنا يتم أخذ النص كاملاً بالفراغات والأسطر
 
-document.getElementById("novelTitle").value = "";
-document.getElementById("novelCover").value = "";
+    if(chapterTitle == "" || chapterContent == ""){
+        alert("املأ جميع الحقول");
+        return;
+    }
 
-loadNovels();
+    await addDoc(collection(db,"chapters"),{
+        novelId:novelId,
+        title:chapterTitle,
+        content:chapterContent // يرسل إلى الفايربيس محتفظاً بـ Enter والفراغات
+    });
 
-});
-
-document.getElementById("addChapter")
-.addEventListener("click",async()=>{
-
-const novelId =
-novelSelect.value;
-
-const chapterTitle =
-document.getElementById("chapterTitle").value;
-
-const chapterContent =
-document.getElementById("chapterContent").value;
-
-if(chapterTitle == "" || chapterContent == ""){
-
-alert("املأ جميع الحقول");
-
-return;
-
-}
-
-await addDoc(collection(db,"chapters"),{
-
-novelId:novelId,
-title:chapterTitle,
-content:chapterContent
-
-});
-
-alert("تمت إضافة الفصل");
-
-document.getElementById("chapterTitle").value = "";
-document.getElementById("chapterContent").value = "";
-
+    alert("تمت إضافة الفصل بنجاح");
+    document.getElementById("chapterTitle").value = "";
+    document.getElementById("chapterContent").value = "";
 });
 
 </script>

@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>إدارة الروايات والفصول</title>
+<style>
+body {
+    background: #111;
+    color: white;
+    font-family: Arial, sans-serif;
+    padding: 20px;
+    margin: 0;
+    direction: rtl;
+}
+
+h1, h2 {
+    text-align: center;
+}
+
+h1 { margin-bottom: 30px; color: red; }
+
+.container {
+    max-width: 800px;
+    margin: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+.box {
+    background: #1b1b1b;
+    padding: 25px;
+    border-radius: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+}
+
+input, textarea, select {
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    background: #222;
+    color: white;
+    font-size: 16px;
+    outline: none;
+    font-family: inherit;
+}
+
+textarea {
+    height: 25px;
+    min-height: 150px;
+    resize: vertical;
+    white-space: pre-wrap;
+    line-height: 1.6;
+}
+
+button {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: 0.3s;
+    font-weight: bold;
+}
+
+.btn-update { background: #4CAF50; color: white; }
+.btn-delete { background: #f44336; color: white; }
+button:hover { opacity: 0.8; }
+
+.chapter-item {
+    background: #252525;
+    padding: 15px;
+    border-radius: 10px;
+    border: 1px solid #333;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.btn-group {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+hr {
+    width: 100%;
+    border: 1px solid #333;
+    margin: 10px 0;
+}
+
+.loading {
+    text-align: center;
+    color: #888;
+    font-style: italic;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h1>لوحة تعديل وحذف الروايات والفصول</h1>
+
+    <!-- خطوة 1: اختيار الرواية -->
+    <div class="box">
+        <h2>اختر الرواية المراد إدارتها</h2>
+        <select id="novelSelect">
+            <option value="">جاري تحميل الروايات...</option>
+        </select>
+    </div>
+
+    <!-- خطوة 2: تعديل بيانات الرواية المختارة -->
+    <div id="novelEditSection" class="box" style="display: none;">
+        <h2>تعديل بيانات الرواية</h2>
+        <label>اسم الرواية:</label>
+        <input type="text" id="editNovelTitle">
+        
+        <label>رابط صورة الغلاف:</label>
+        <input type="text" id="editNovelCover">
+        
+        <div class="btn-group">
+            <button class="btn-update" id="updateNovelBtn">تحديث بيانات الرواية</button>
+            <button class="btn-delete" id="deleteNovelBtn">حذف الرواية بالكامل</button>
+        </div>
+    </div>
+
+    <!-- خطوة 3: إدارة فصول الرواية المختارة -->
+    <div id="chaptersSection" class="box" style="display: none;">
+        <h2>التحكم في فصول الرواية</h2>
+        <div id="chaptersList"></div>
+    </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { 
+    getFirestore, collection, doc, getDocs, getDoc, updateDoc, deleteDoc, query, where 
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC20dxXLArorRAndMyIF1iBc6R4OVCYZIo",
+  authDomain: "oussa-3e001.firebaseapp.com",
+  projectId: "oussa-3e001",
+  storageBucket: "oussa-3e001.firebasestorage.app",
+  messagingSenderId: "963147796988",
+  appId: "1:963147796988:web:d06cc7c211f7d20c27a279"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const novelSelect = document.getElementById("novelSelect");
+const novelEditSection = document.getElementById("novelEditSection");
+const chaptersSection = document.getElementById("chaptersSection");
+
+const editNovelTitle = document.getElementById("editNovelTitle");
+const editNovelCover = document.getElementById("editNovelCover");
+const chaptersList = document.getElementById("chaptersList");
+
+// 1. جلب قائمة الروايات عند فتح الصفحة
+async function loadNovels() {
+    novelSelect.innerHTML = '<option value="">-- اختر رواية من القائمة --</option>';
+    const querySnapshot = await getDocs(collection(db, "novels"));
+    querySnapshot.forEach((doc) => {
+        const novel = doc.data();
+        novelSelect.innerHTML += `<option value="${doc.id}">${novel.title}</option>`;
+    });
+}
+loadNovels();
+
+// 2. عند اختيار رواية معينة من القائمة
+novelSelect.addEventListener("change", async () => {
+    const novelId = novelSelect.value;
+    if (!novelId) {
+        novelEditSection.style.display = "none";
+        chaptersSection.style.display = "none";
+        return;
+    }
+
+    // جلب بيانات الرواية المختارة وتعبئتها في المدخلات
+    const novelDoc = await getDoc(doc(db, "novels", novelId));
+    if (novelDoc.exists()) {
+        const novelData = novelDoc.data();
+        editNovelTitle.value = novelData.title;
+        editNovelCover.value = novelData.cover;
+        novelEditSection.style.display = "flex";
+    }
+
+    // جلب فصول هذه الرواية
+    loadChapters(novelId);
+});
+
+// 3. تحديث بيانات الرواية (الاسم والصورة)
+document.getElementById("updateNovelBtn").addEventListener("click", async () => {
+    const novelId = novelSelect.value;
+    const newTitle = editNovelTitle.value.trim();
+    const newCover = editNovelCover.value.trim();
+
+    if (newTitle === "" || newCover === "") {
+        alert("يرجى ملء جميع حقول الرواية");
+        return;
+    }
+
+    await updateDoc(doc(db, "novels", novelId), {
+        title: newTitle,
+        cover: newCover
+    });
+
+    alert("تم تحديث بيانات الرواية بنجاح");
+    loadNovels(); // إعادة تحميل القائمة لتحديث الأسماء
+});
+
+// 4. حذف الرواية بالكامل مع فصولها
+document.getElementById("deleteNovelBtn").addEventListener("click", async () => {
+    const novelId = novelSelect.value;
+    if (confirm("هل أنت متأكد من حذف هذه الرواية نهائياً؟ سيتم حذف جميع الفصول التابعة لها أيضاً!")) {
+        
+        // أولاً: حذف الفصول المرتبطة بالرواية
+        const q = query(collection(db, "chapters"), where("novelId", "==", novelId));
+        const chaptersSnapshot = await getDocs(q);
+        chaptersSnapshot.forEach(async (chapterDoc) => {
+            await deleteDoc(doc(db, "chapters", chapterDoc.id));
+        });
+
+        // ثانياً: حذف الرواية نفسها
+        await deleteDoc(doc(db, "novels", novelId));
+
+        alert("تم حذف الرواية وفصولها بنجاح");
+        novelEditSection.style.display = "none";
+        chaptersSection.style.display = "none";
+        loadNovels();
+    }
+});
+
+// 5. جلب وعرض فصول الرواية المختارة
+async function loadChapters(novelId) {
+    chaptersList.innerHTML = '<p class="loading">جاري تحميل الفصول...</p>';
+    chaptersSection.style.display = "flex";
+
+    const q = query(collection(db, "chapters"), where("novelId", "==", novelId));
+    const querySnapshot = await getDocs(q);
+    
+    chaptersList.innerHTML = "";
+    
+    if (querySnapshot.empty) {
+        chaptersList.innerHTML = "<p class='loading'>لا توجد فصول مضافة لهذه الرواية بعد.</p>";
+        return;
+    }
+
+    querySnapshot.forEach((documentSnapshot) => {
+        const chapterId = documentSnapshot.id;
+        const chapter = documentSnapshot.data();
+
+        // إنشاء واجهة تعديل لكل فصل بشكل منفصل
+        const chapterBox = document.createElement("div");
+        chapterBox.className = "chapter-item";
+        chapterBox.innerHTML = `
+            <label>عنوان الفصل:</label>
+            <input type="text" id="title-${chapterId}" value="${chapter.title}">
+            
+            <label>محتوى الفصل (يدعم الأسطر والفراغات):</label>
+            <textarea id="content-${chapterId}">${chapter.content}</textarea>
+            
+            <div class="btn-group">
+                <button class="btn-update" data-id="${chapterId}" action="update">تحديث الفصل</button>
+                <button class="btn-delete" data-id="${chapterId}" action="delete">حذف الفصل</button>
+            </div>
+        `;
+        chaptersList.appendChild(chapterBox);
+    });
+
+    // ربط أزرار التحديث والحذف للفصول بالعمليات الخاصة بها
+    chaptersList.querySelectorAll("button").forEach(button => {
+        button.addEventListener("click", async (e) => {
+            const id = e.target.getAttribute("data-id");
+            const action = e.target.getAttribute("action");
+
+            if (action === "update") {
+                const updatedTitle = document.getElementById(`title-${id}`).value.trim();
+                const updatedContent = document.getElementById(`content-${id}`).value; // يأخذ الفراغات والـ Enter تلقائياً
+
+                if (updatedTitle === "" || updatedContent === "") {
+                    alert("لا يمكن ترك الفصل فارغاً");
+                    return;
+                }
+
+                await updateDoc(doc(db, "chapters", id), {
+                    title: updatedTitle,
+                    content: updatedContent
+                });
+                alert("تم تحديث الفصل بنجاح");
+
+            } else if (action === "delete") {
+                if (confirm("هل أنت متأكد من حذف هذا الفصل؟")) {
+                    await deleteDoc(doc(db, "chapters", id));
+                    alert("تم حذف الفصل");
+                    loadChapters(novelId); // إعادة تحديث قائمة الفصول
+                }
+            }
+        });
+    });
+}
+</script>
+
+</body>
+</html>

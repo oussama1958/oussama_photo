@@ -5,51 +5,102 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>موقع الروايات</title>
+<title>مشاعر</title>
 
 <style>
 
 body{
 margin:0;
-padding:20px;
+padding:15px; /* تقليل الحشو لزيادة المساحة على الهاتف */
 background:#0f0f0f;
-font-family:Arial;
+font-family:Arial, sans-serif;
 color:white;
+direction: rtl;
 }
 
 h1{
 text-align:center;
-margin-bottom:30px;
+margin-bottom:20px;
+font-size: 24px; /* حجم خط متناسق مع الهاتف والكمبيوتر */
 }
 
+/* شريط علوي للزر */
+.top-nav {
+display: flex;
+justify-content: flex-start;
+max-width: 1200px;
+margin: 0 auto 15px auto;
+}
+
+/* تنسيق زر إضافة فصل */
+.add-chapter-btn {
+background: #ff4757;
+color: white;
+text-decoration: none;
+padding: 8px 16px;
+border-radius: 8px;
+font-size: 14px;
+font-weight: bold;
+transition: 0.3s;
+box-shadow: 0 4px 10px rgba(255, 71, 87, 0.3);
+}
+
+.add-chapter-btn:hover {
+background: #ff6b81;
+}
+
+/* تعديل نظام العرض ليصبح مرناً ومصغراً تلقائياً */
 #novels{
 display:grid;
-grid-template-columns:repeat(auto-fill,minmax(170px,1fr));
-gap:20px;
+grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); /* تصغير الحد الأدنى للبطاقة ليناسب شاشات الهواتف */
+gap: 12px; /* تقليل الفراغات بين البطاقات لتبدو متراصة */
+max-width: 1200px;
+margin: auto;
 }
 
-.card{
+.card {
 background:#1c1c1c;
-border-radius:15px;
+border-radius:12px; /* زوايا أنعم ومصغرة */
 overflow:hidden;
 cursor:pointer;
 transition:0.3s;
+box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+display: flex;
+flex-direction: column;
 }
 
 .card:hover{
-transform:scale(1.03);
+transform:scale(1.02);
 }
 
+/* جعل طول الصورة متناسقاً ومصغراً على الهاتف */
 .card img{
 width:100%;
-height:250px;
+height: 190px; /* تقليل الارتفاع من 250px إلى 190px ليناسب الهواتف */
 object-fit:cover;
 }
 
+/* تصغير حجم خط العنوان ومساحته */
 .card h2{
 text-align:center;
-padding:10px;
-font-size:18px;
+padding: 8px 5px;
+font-size: 14px; /* تصغير الخط لكي لا يأخذ أسطر كثيرة */
+margin: 0;
+word-break: break-word;
+}
+
+/* تحسينات إضافية للهواتف شديدة الصغر */
+@media(max-width: 360px) {
+    #novels {
+        grid-template-columns: repeat(2, 1fr); /* إجبار المتصفح على عرض بطاقتين بجانب بعضهما دائماً */
+        gap: 8px;
+    }
+    .card img {
+        height: 160px; /* تقليل إضافي لطول الصورة في الشاشات الصغيرة جداً */
+    }
+    .card h2 {
+        font-size: 13px;
+    }
 }
 
 </style>
@@ -58,7 +109,11 @@ font-size:18px;
 
 <body>
 
-<h1>موقع الروايات</h1>
+<div class="top-nav">
+    <a href="adminrasil.html" class="add-chapter-btn">➕ إضافة فصل</a>
+</div>
+
+<h1> R 💗 O </h1>
 
 <div id="novels"></div>
 

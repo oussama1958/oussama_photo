@@ -12,11 +12,12 @@
 body{
 background:#0f0f0f;
 color:white;
-font-family:Arial;
+font-family:Arial, sans-serif;
 margin:0;
 padding:15px;
 line-height:2.1;
 box-sizing:border-box;
+direction: rtl; /* مضاف للتوجيه العربي الصحيح */
 }
 
 *{
@@ -61,6 +62,8 @@ line-height:2.3;
 word-break:break-word;
 overflow-wrap:break-word;
 box-shadow:0 0 10px rgba(0,0,0,0.4);
+/* التعديل الجوهري لقراءة الفراغات والأسطر الجديدة تلقائياً */
+white-space: pre-wrap; 
 }
 
 /* الفقرات */
@@ -185,8 +188,9 @@ docSnap.data();
 document.getElementById("chapterTitle")
 .innerText = chapter.title;
 
+/* تغيير من innerHTML إلى innerText لقراءة الأسطر المخفية وسلامة النص */
 document.getElementById("content")
-.innerHTML = chapter.content;
+.innerText = chapter.content; 
 
 }
 
